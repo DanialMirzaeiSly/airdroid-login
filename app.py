@@ -1,9 +1,11 @@
+import traceback
+
 from flask import Flask, jsonify
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import traceback
+
 
 app = Flask(__name__)
 
@@ -28,7 +30,6 @@ def run_login():
 
         options = webdriver.ChromeOptions()
 
-        # Chromium روی Render
         options.binary_location = "/usr/bin/chromium"
 
         options.add_argument("--headless=new")
@@ -36,46 +37,108 @@ def run_login():
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
         options.add_argument("--disable-software-rasterizer")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--disable-background-networking")
+        options.add_argument("--disable-features=Translate,BackForwardCache")
         options.add_argument("--window-size=1280,900")
-        options.add_argument("--remote-debugging-port=9222")
 
         print("Starting Chrome...", flush=True)
 
-        driver = webdriver.Chrome(options=options)
+        driver = webdriver.Chrome(
+            options=options
+        )
 
         print("Chrome started successfully", flush=True)
 
-        wait = WebDriverWait(driver, 20)
+        wait = WebDriverWait(
+            driver,
+            30
+        )
 
         print("Opening AirDroid...", flush=True)
 
         driver.get(URL)
 
-        print("Page title:", driver.title, flush=True)
+        print(
+            "Page loaded:",
+            driver.current_url,
+            flush=True
+        )
+
+        print(
+            "Title:",
+            driver.title,
+            flush=True
+        )
+
+        # -----------------------------
+        # Email
+        # -----------------------------
+
+        print(
+            "Waiting for email...",
+            flush=True
+        )
 
         email = wait.until(
             EC.visibility_of_element_located(
-                (By.CSS_SELECTOR, 'input[type="email"]')
+                (
+                    By.CSS_SELECTOR,
+                    'input[type="email"]'
+                )
             )
         )
 
-        print("Email field found", flush=True)
+        print(
+            "Email found",
+            flush=True
+        )
+
+        email.clear()
         email.send_keys(EMAIL)
+
+        # -----------------------------
+        # Password
+        # -----------------------------
+
+        print(
+            "Waiting for password...",
+            flush=True
+        )
 
         password = wait.until(
             EC.visibility_of_element_located(
-                (By.CSS_SELECTOR, 'input[type="password"]')
+                (
+                    By.CSS_SELECTOR,
+                    'input[type="password"]'
+                )
             )
         )
 
-        print("Password field found", flush=True)
+        print(
+            "Password found",
+            flush=True
+        )
+
+        password.clear()
         password.send_keys(PASSWORD)
 
-        # حذف Cookie overlay
+        # -----------------------------
+        # Cookie popup
+        # -----------------------------
+
         try:
-            cookie = driver.find_element(
-                By.ID,
-                "mode-cookie-tip"
+
+            cookie = WebDriverWait(
+                driver,
+                3
+            ).until(
+                EC.presence_of_element_located(
+                    (
+                        By.ID,
+                        "mode-cookie-tip"
+                    )
+                )
             )
 
             driver.execute_script(
@@ -83,22 +146,43 @@ def run_login():
                 cookie
             )
 
-            print("Cookie overlay removed", flush=True)
-
-        except Exception:
             print(
-                "Cookie overlay not found",
+                "Cookie popup removed",
                 flush=True
             )
 
-        # پیدا کردن دکمه Sign in
+        except Exception:
+
+            print(
+                "Cookie popup not found",
+                flush=True
+            )
+
+        # -----------------------------
+        # Sign in
+        # -----------------------------
+
+        print(
+            "Waiting for Sign in button...",
+            flush=True
+        )
+
         sign_in = wait.until(
-            EC.presence_of_element_located(
+            EC.element_to_be_clickable(
                 (
                     By.XPATH,
-                    "//button[contains(translate(., "
-                    "'ABCDEFGHIJKLMNOPQRSTUVWXYZ', "
-                    "'abcdefghijklmnopqrstuvwxyz'), 'sign in')]"
+                    """
+                    //button[
+                        contains(
+                            translate(
+                                normalize-space(.),
+                                'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+                                'abcdefghijklmnopqrstuvwxyz'
+                            ),
+                            'sign in'
+                        )
+                    ]
+                    """
                 )
             )
         )
@@ -108,26 +192,79 @@ def run_login():
             flush=True
         )
 
-        # اسکرول به دکمه
         driver.execute_script(
-            "arguments[0].scrollIntoView({block: 'center'});",
+            """
+            arguments[0].scrollIntoView({
+                block: 'center',
+                inline: 'center'
+            });
+            """,
             sign_in
         )
 
-        # کلیک با JavaScript
-        driver.execute_script(
-            "arguments[0].click();",
-            sign_in
+        # اول کلیک عادی
+        try:
+
+            sign_in.click()
+
+            print(
+                "Sign in clicked",
+                flush=True
+            )
+
+        except Exception as click_error:
+
+            print(
+                "Normal click failed:",
+                repr(click_error),
+                flush=True
+            )
+
+            # اگر کلیک عادی نشد، JS
+            driver.execute_script(
+                "arguments[0].click();",
+                sign_in
+            )
+
+            print(
+                "Sign in clicked with JavaScript",
+                flush=True
+            )
+
+        # -----------------------------
+        # Wait after login
+        # -----------------------------
+
+        try:
+
+            WebDriverWait(
+                driver,
+                10
+            ).until(
+                lambda d: d.current_url != URL
+            )
+
+        except Exception:
+
+            pass
+
+        print(
+            "Final URL:",
+            driver.current_url,
+            flush=True
         )
 
         print(
-            "Sign in clicked",
+            "Final title:",
+            driver.title,
             flush=True
         )
 
         return jsonify({
             "success": True,
-            "message": "Login request submitted"
+            "message": "Login request submitted",
+            "current_url": driver.current_url,
+            "title": driver.title
         })
 
     except Exception as e:
@@ -138,7 +275,7 @@ def run_login():
         )
 
         print(
-            str(e),
+            repr(e),
             flush=True
         )
 
@@ -146,13 +283,29 @@ def run_login():
 
         return jsonify({
             "success": False,
-            "error": str(e)
+            "error": repr(e)
         }), 500
 
     finally:
 
-        if driver:
-            driver.quit()
+        if driver is not None:
+
+            try:
+
+                driver.quit()
+
+                print(
+                    "Chrome closed",
+                    flush=True
+                )
+
+            except Exception as e:
+
+                print(
+                    "Chrome quit warning:",
+                    repr(e),
+                    flush=True
+                )
 
         print(
             "=== /run finished ===",
@@ -161,6 +314,7 @@ def run_login():
 
 
 if __name__ == "__main__":
+
     app.run(
         host="0.0.0.0",
         port=10000

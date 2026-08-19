@@ -26,22 +26,15 @@ def run_login():
     driver = None
 
     try:
-        print("========================================", flush=True)
         print("=== /run started ===", flush=True)
-        print("========================================", flush=True)
-
-        # ====================================
-        # Chrome configuration
-        # ====================================
 
         options = webdriver.ChromeOptions()
 
         options.binary_location = "/usr/bin/chromium"
 
         # مهم:
-        # eager باعث می‌شود Selenium منتظر تمام عکس‌ها،
-        # trackingها و resourceهای جانبی نماند.
-        options.page_load_strategy = "eager"
+        # منتظر load کامل صفحه نمی‌ماند
+        options.page_load_strategy = "none"
 
         options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")
@@ -59,22 +52,10 @@ def run_login():
         )
 
         options.add_argument("--window-size=1280,900")
-
         options.add_argument("--no-first-run")
         options.add_argument("--no-default-browser-check")
 
-        options.add_argument(
-            "--disable-popup-blocking"
-        )
-
-        print(
-            "Starting Chrome...",
-            flush=True
-        )
-
-        # ====================================
-        # Start Chrome
-        # ====================================
+        print("Starting Chrome...", flush=True)
 
         driver = webdriver.Chrome(
             options=options
@@ -85,81 +66,34 @@ def run_login():
             flush=True
         )
 
-        # ====================================
-        # Timeouts
-        # ====================================
-
-        driver.set_page_load_timeout(30)
-        driver.set_script_timeout(30)
+        # timeoutهای Selenium
+        driver.set_page_load_timeout(20)
+        driver.set_script_timeout(20)
 
         wait = WebDriverWait(
             driver,
             30
         )
 
-        # ====================================
-        # Open AirDroid
-        # ====================================
+        # -----------------------------
+        # Open website
+        # -----------------------------
 
         print(
             "Opening AirDroid...",
             flush=True
         )
 
-        try:
+        driver.get(URL)
 
-            driver.get(URL)
+        print(
+            "driver.get() returned",
+            flush=True
+        )
 
-            print(
-                "driver.get() completed",
-                flush=True
-            )
-
-        except Exception as e:
-
-            print(
-                "driver.get() warning:",
-                repr(e),
-                flush=True
-            )
-
-            # با eager معمولاً نباید اینجا برسیم،
-            # ولی اگر page-load timeout شد،
-            # session را فوراً خراب نمی‌کنیم.
-            print(
-                "Continuing with current page...",
-                flush=True
-            )
-
-        # ====================================
-        # Check current page
-        # ====================================
-
-        try:
-
-            print(
-                "Current URL:",
-                driver.current_url,
-                flush=True
-            )
-
-            print(
-                "Page title:",
-                driver.title,
-                flush=True
-            )
-
-        except Exception as e:
-
-            print(
-                "Could not read page info:",
-                repr(e),
-                flush=True
-            )
-
-        # ====================================
+        # -----------------------------
         # Wait for email
-        # ====================================
+        # -----------------------------
 
         print(
             "Waiting for email field...",
@@ -181,19 +115,16 @@ def run_login():
         )
 
         email.clear()
-
-        email.send_keys(
-            EMAIL
-        )
+        email.send_keys(EMAIL)
 
         print(
             "Email entered",
             flush=True
         )
 
-        # ====================================
+        # -----------------------------
         # Password
-        # ====================================
+        # -----------------------------
 
         print(
             "Waiting for password field...",
@@ -215,19 +146,16 @@ def run_login():
         )
 
         password.clear()
-
-        password.send_keys(
-            PASSWORD
-        )
+        password.send_keys(PASSWORD)
 
         print(
             "Password entered",
             flush=True
         )
 
-        # ====================================
+        # -----------------------------
         # Cookie popup
-        # ====================================
+        # -----------------------------
 
         try:
 
@@ -244,9 +172,7 @@ def run_login():
             )
 
             driver.execute_script(
-                """
-                arguments[0].remove();
-                """,
+                "arguments[0].remove();",
                 cookie
             )
 
@@ -262,12 +188,12 @@ def run_login():
                 flush=True
             )
 
-        # ====================================
-        # Sign In button
-        # ====================================
+        # -----------------------------
+        # Sign in
+        # -----------------------------
 
         print(
-            "Waiting for Sign in button...",
+            "Waiting for Sign in...",
             flush=True
         )
 
@@ -296,35 +222,21 @@ def run_login():
             flush=True
         )
 
-        # ====================================
-        # Scroll
-        # ====================================
-
         driver.execute_script(
             """
             arguments[0].scrollIntoView({
-                block: 'center',
-                inline: 'center'
+                block: 'center'
             });
             """,
             sign_in
         )
-
-        print(
-            "Scrolled to Sign in button",
-            flush=True
-        )
-
-        # ====================================
-        # Click
-        # ====================================
 
         try:
 
             sign_in.click()
 
             print(
-                "Sign in clicked normally",
+                "Sign in clicked",
                 flush=True
             )
 
@@ -337,93 +249,53 @@ def run_login():
             )
 
             driver.execute_script(
-                """
-                arguments[0].click();
-                """,
+                "arguments[0].click();",
                 sign_in
             )
 
             print(
-                "Sign in clicked with JavaScript",
+                "JavaScript click completed",
                 flush=True
             )
 
-        # ====================================
-        # Wait for login response
-        # ====================================
+        # -----------------------------
+        # Result
+        # -----------------------------
 
-        print(
-            "Waiting after login...",
-            flush=True
-        )
+        import time
 
-        try:
-
-            WebDriverWait(
-                driver,
-                10
-            ).until(
-                lambda d: (
-                    d.current_url != URL
-                )
-            )
-
-        except Exception:
-
-            print(
-                "URL did not change within 10 seconds",
-                flush=True
-            )
-
-        # ====================================
-        # Final result
-        # ====================================
+        time.sleep(3)
 
         try:
-
-            final_url = driver.current_url
-
+            current_url = driver.current_url
         except Exception:
-
-            final_url = "unknown"
+            current_url = "unknown"
 
         try:
-
-            final_title = driver.title
-
+            title = driver.title
         except Exception:
-
-            final_title = "unknown"
+            title = "unknown"
 
         print(
             "Final URL:",
-            final_url,
+            current_url,
             flush=True
         )
 
         print(
             "Final title:",
-            final_title,
+            title,
             flush=True
         )
 
         return jsonify({
             "success": True,
             "message": "Login request submitted",
-            "current_url": final_url,
-            "title": final_title
+            "current_url": current_url,
+            "title": title
         })
 
-    # ========================================
-    # Error
-    # ========================================
-
     except Exception as e:
-
-        print(
-            "========================================",
-            flush=True
-        )
 
         print(
             "=== ERROR ===",
@@ -437,30 +309,20 @@ def run_login():
 
         traceback.print_exc()
 
-        print(
-            "========================================",
-            flush=True
-        )
-
         return jsonify({
             "success": False,
             "error": repr(e)
         }), 500
-
-    # ========================================
-    # Cleanup
-    # ========================================
 
     finally:
 
         if driver is not None:
 
             try:
-
                 driver.quit()
 
                 print(
-                    "Chrome closed successfully",
+                    "Chrome closed",
                     flush=True
                 )
 

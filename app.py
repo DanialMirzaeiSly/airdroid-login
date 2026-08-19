@@ -27,18 +27,28 @@ def run_login():
         print("=== /run started ===", flush=True)
 
         options = webdriver.ChromeOptions()
+
+        # Chromium روی Render
+        options.binary_location = "/usr/bin/chromium"
+
         options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--disable-software-rasterizer")
         options.add_argument("--window-size=1280,900")
+        options.add_argument("--remote-debugging-port=9222")
 
         print("Starting Chrome...", flush=True)
 
         driver = webdriver.Chrome(options=options)
 
+        print("Chrome started successfully", flush=True)
+
         wait = WebDriverWait(driver, 20)
 
         print("Opening AirDroid...", flush=True)
+
         driver.get(URL)
 
         print("Page title:", driver.title, flush=True)
@@ -63,7 +73,10 @@ def run_login():
 
         # حذف Cookie overlay
         try:
-            cookie = driver.find_element(By.ID, "mode-cookie-tip")
+            cookie = driver.find_element(
+                By.ID,
+                "mode-cookie-tip"
+            )
 
             driver.execute_script(
                 "arguments[0].remove();",
@@ -73,8 +86,12 @@ def run_login():
             print("Cookie overlay removed", flush=True)
 
         except Exception:
-            print("Cookie overlay not found", flush=True)
+            print(
+                "Cookie overlay not found",
+                flush=True
+            )
 
+        # پیدا کردن دکمه Sign in
         sign_in = wait.until(
             EC.presence_of_element_located(
                 (
@@ -86,14 +103,27 @@ def run_login():
             )
         )
 
-        print("Sign in button found", flush=True)
+        print(
+            "Sign in button found",
+            flush=True
+        )
 
+        # اسکرول به دکمه
+        driver.execute_script(
+            "arguments[0].scrollIntoView({block: 'center'});",
+            sign_in
+        )
+
+        # کلیک با JavaScript
         driver.execute_script(
             "arguments[0].click();",
             sign_in
         )
 
-        print("Sign in clicked", flush=True)
+        print(
+            "Sign in clicked",
+            flush=True
+        )
 
         return jsonify({
             "success": True,
@@ -102,8 +132,16 @@ def run_login():
 
     except Exception as e:
 
-        print("=== ERROR ===", flush=True)
-        print(str(e), flush=True)
+        print(
+            "=== ERROR ===",
+            flush=True
+        )
+
+        print(
+            str(e),
+            flush=True
+        )
+
         traceback.print_exc()
 
         return jsonify({
@@ -116,7 +154,10 @@ def run_login():
         if driver:
             driver.quit()
 
-        print("=== /run finished ===", flush=True)
+        print(
+            "=== /run finished ===",
+            flush=True
+        )
 
 
 if __name__ == "__main__":

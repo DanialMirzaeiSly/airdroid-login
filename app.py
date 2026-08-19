@@ -84,7 +84,7 @@ def run_login():
 
         driver.set_page_load_timeout(30)
         # URL
-        driver.get("https://web.airdroid.com/")
+        driver.get(URL)
 
         print(
             "Page request sent",

@@ -1,10 +1,10 @@
-import traceback
-
 from flask import Flask, jsonify
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import traceback
 
 
 app = Flask(__name__)
@@ -30,34 +30,37 @@ def run_login():
 
         options = webdriver.ChromeOptions()
 
+        # مسیر Chromium داخل Docker
         options.binary_location = "/usr/bin/chromium"
 
-        # مهم:
-        # منتظر load کامل صفحه نمی‌ماند
-        options.page_load_strategy = "none"
+        # مسیر ChromeDriver داخل Docker
+        service = Service(
+            executable_path="/usr/bin/chromedriver"
+        )
+
+        options.page_load_strategy = "eager"
 
         options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
         options.add_argument("--disable-software-rasterizer")
-
         options.add_argument("--disable-extensions")
         options.add_argument("--disable-background-networking")
         options.add_argument("--disable-background-timer-throttling")
         options.add_argument("--disable-renderer-backgrounding")
-
-        options.add_argument(
-            "--disable-features=Translate,BackForwardCache"
-        )
-
-        options.add_argument("--window-size=1280,900")
+        options.add_argument("--disable-popup-blocking")
         options.add_argument("--no-first-run")
         options.add_argument("--no-default-browser-check")
+        options.add_argument("--window-size=1280,900")
 
-        print("Starting Chrome...", flush=True)
+        print(
+            "Starting Chrome...",
+            flush=True
+        )
 
         driver = webdriver.Chrome(
+            service=service,
             options=options
         )
 
@@ -66,18 +69,13 @@ def run_login():
             flush=True
         )
 
-        # timeoutهای Selenium
-        driver.set_page_load_timeout(20)
-        driver.set_script_timeout(20)
+        driver.set_page_load_timeout(30)
+        driver.set_script_timeout(30)
 
         wait = WebDriverWait(
             driver,
             30
         )
-
-        # -----------------------------
-        # Open website
-        # -----------------------------
 
         print(
             "Opening AirDroid...",
@@ -87,16 +85,24 @@ def run_login():
         driver.get(URL)
 
         print(
-            "driver.get() returned",
+            "Page request sent",
             flush=True
         )
 
-        # -----------------------------
-        # Wait for email
-        # -----------------------------
+        print(
+            "Current URL:",
+            driver.current_url,
+            flush=True
+        )
 
         print(
-            "Waiting for email field...",
+            "Title:",
+            driver.title,
+            flush=True
+        )
+
+        print(
+            "Waiting for email...",
             flush=True
         )
 
@@ -110,7 +116,7 @@ def run_login():
         )
 
         print(
-            "Email field found",
+            "Email found",
             flush=True
         )
 
@@ -122,12 +128,8 @@ def run_login():
             flush=True
         )
 
-        # -----------------------------
-        # Password
-        # -----------------------------
-
         print(
-            "Waiting for password field...",
+            "Waiting for password...",
             flush=True
         )
 
@@ -141,7 +143,7 @@ def run_login():
         )
 
         print(
-            "Password field found",
+            "Password found",
             flush=True
         )
 
@@ -153,10 +155,7 @@ def run_login():
             flush=True
         )
 
-        # -----------------------------
-        # Cookie popup
-        # -----------------------------
-
+        # Cookie
         try:
 
             cookie = WebDriverWait(
@@ -188,10 +187,7 @@ def run_login():
                 flush=True
             )
 
-        # -----------------------------
         # Sign in
-        # -----------------------------
-
         print(
             "Waiting for Sign in...",
             flush=True
@@ -225,7 +221,8 @@ def run_login():
         driver.execute_script(
             """
             arguments[0].scrollIntoView({
-                block: 'center'
+                block: 'center',
+                inline: 'center'
             });
             """,
             sign_in
@@ -258,41 +255,16 @@ def run_login():
                 flush=True
             )
 
-        # -----------------------------
-        # Result
-        # -----------------------------
-
-        import time
-
-        time.sleep(3)
-
-        try:
-            current_url = driver.current_url
-        except Exception:
-            current_url = "unknown"
-
-        try:
-            title = driver.title
-        except Exception:
-            title = "unknown"
-
         print(
-            "Final URL:",
-            current_url,
-            flush=True
-        )
-
-        print(
-            "Final title:",
-            title,
+            "Login request submitted",
             flush=True
         )
 
         return jsonify({
             "success": True,
             "message": "Login request submitted",
-            "current_url": current_url,
-            "title": title
+            "current_url": driver.current_url,
+            "title": driver.title
         })
 
     except Exception as e:
@@ -319,6 +291,7 @@ def run_login():
         if driver is not None:
 
             try:
+
                 driver.quit()
 
                 print(

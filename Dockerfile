@@ -10,7 +10,11 @@ RUN apt-get update && \
         chromium-driver \
         ca-certificates \
         fonts-liberation \
+    && echo "===== CHROMIUM =====" \
+    && which chromium \
     && chromium --version \
+    && echo "===== CHROMEDRIVER =====" \
+    && which chromedriver \
     && chromedriver --version \
     && rm -rf /var/lib/apt/lists/*
 

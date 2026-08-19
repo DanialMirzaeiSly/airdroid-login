@@ -3,6 +3,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import traceback
 
 app = Flask(__name__)
 
@@ -18,26 +19,37 @@ def home():
 
 
 @app.route("/run")
-def run_login(): 
+def run_login():
 
-    options = webdriver.ChromeOptions()
-    options.add_argument("--headless=new")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--window-size=1280,900")
-
-    driver = webdriver.Chrome(options=options)
+    driver = None
 
     try:
+        print("=== /run started ===", flush=True)
+
+        options = webdriver.ChromeOptions()
+        options.add_argument("--headless=new")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--window-size=1280,900")
+
+        print("Starting Chrome...", flush=True)
+
+        driver = webdriver.Chrome(options=options)
+
         wait = WebDriverWait(driver, 20)
 
+        print("Opening AirDroid...", flush=True)
         driver.get(URL)
+
+        print("Page title:", driver.title, flush=True)
 
         email = wait.until(
             EC.visibility_of_element_located(
                 (By.CSS_SELECTOR, 'input[type="email"]')
             )
         )
+
+        print("Email field found", flush=True)
         email.send_keys(EMAIL)
 
         password = wait.until(
@@ -45,19 +57,24 @@ def run_login():
                 (By.CSS_SELECTOR, 'input[type="password"]')
             )
         )
+
+        print("Password field found", flush=True)
         password.send_keys(PASSWORD)
 
-        # حذف پنجره Cookie در صورت وجود
+        # حذف Cookie overlay
         try:
             cookie = driver.find_element(By.ID, "mode-cookie-tip")
+
             driver.execute_script(
                 "arguments[0].remove();",
                 cookie
             )
-        except Exception:
-            pass
 
-        # پیدا کردن دکمه Sign in
+            print("Cookie overlay removed", flush=True)
+
+        except Exception:
+            print("Cookie overlay not found", flush=True)
+
         sign_in = wait.until(
             EC.presence_of_element_located(
                 (
@@ -69,11 +86,14 @@ def run_login():
             )
         )
 
-        # کلیک با JavaScript برای جلوگیری از click intercepted
+        print("Sign in button found", flush=True)
+
         driver.execute_script(
             "arguments[0].click();",
             sign_in
         )
+
+        print("Sign in clicked", flush=True)
 
         return jsonify({
             "success": True,
@@ -81,13 +101,22 @@ def run_login():
         })
 
     except Exception as e:
+
+        print("=== ERROR ===", flush=True)
+        print(str(e), flush=True)
+        traceback.print_exc()
+
         return jsonify({
             "success": False,
             "error": str(e)
         }), 500
 
     finally:
-        driver.quit()
+
+        if driver:
+            driver.quit()
+
+        print("=== /run finished ===", flush=True)
 
 
 if __name__ == "__main__":

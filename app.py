@@ -57,13 +57,43 @@ def run_login():
 
         print("Opening AirDroid...", flush=True)
 
-        driver.get(URL)
+        try:
+            driver.set_page_load_timeout(45)
 
-        print(
-            "Page loaded:",
-            driver.current_url,
-            flush=True
-        )
+            print("Calling driver.get()...", flush=True)
+
+            # driver.get(URL)
+            driver.get("https://www.google.com")
+
+            print(
+                "driver.get() completed",
+                flush=True
+            )
+
+        except Exception as e:
+
+            print(
+                "driver.get() ERROR:",
+                repr(e),
+                flush=True
+            )
+
+            traceback.print_exc()
+
+            try:
+                print(
+                    "Current URL:",
+                    driver.current_url,
+                    flush=True
+                )
+            except Exception as url_error:
+                print(
+                    "Cannot read current URL:",
+                    repr(url_error),
+                    flush=True
+                )
+
+            raise
 
         print(
             "Title:",

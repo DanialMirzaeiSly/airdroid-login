@@ -1,3 +1,7 @@
 Flask
 selenium
 gunicorn
+
+
+# EMAIL = "mobility_hy@telegmail.com"
+# PASSWORD = "Danial*#*&*Mirzaei??23"

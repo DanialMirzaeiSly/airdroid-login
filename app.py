@@ -1,9 +1,10 @@
 from flask import Flask, jsonify
 from selenium import webdriver
-# from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
+import os
 import time
 import traceback
 
@@ -14,6 +15,9 @@ URL = "https://www.airdroid.com/user-center/signin/?redirect=%2F"
 
 EMAIL = "mobility_hy@telegmail.com"
 PASSWORD = "Danial*#*&*Mirzaei??23"
+
+# ذخیره Session / Cookie برای Auto Login
+CHROME_PROFILE = os.path.abspath("./chrome_profile")
 
 
 @app.route("/")
@@ -32,92 +36,190 @@ def run_login():
         options = webdriver.ChromeOptions()
         options.binary_location = "/usr/bin/chromium"
 
+        # حفظ Cookie و Session
+        options.add_argument(
+            f"--user-data-dir={CHROME_PROFILE}"
+        )
+
         options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1280,900")
 
-        print("Starting Chrome...", flush=True)
-
         driver = webdriver.Chrome(options=options)
 
-        print("Chrome started successfully", flush=True)
+        print("Chrome started", flush=True)
 
-        wait = WebDriverWait(driver, 20)
+        wait = WebDriverWait(driver, 25)
 
-        print("Opening AirDroid...", flush=True)
         driver.get(URL)
 
-        print("Page title:", driver.title, flush=True)
+        print("URL:", driver.current_url, flush=True)
+        print("Title:", driver.title, flush=True)
 
-        email = wait.until(
-            EC.visibility_of_element_located(
-                (By.CSS_SELECTOR, 'input[type="email"]')
+        time.sleep(3)
+
+        # ============================
+        # بررسی Session قبلی
+        # ============================
+
+        if "/user-center/signin" not in driver.current_url:
+
+            print(
+                "Already logged in.",
+                flush=True
             )
-        )
-        email.send_keys(EMAIL)
 
-        password = wait.until(
-            EC.visibility_of_element_located(
-                (By.CSS_SELECTOR, 'input[type="password"]')
+        else:
+
+            print(
+                "Login required.",
+                flush=True
             )
-        )
-        password.send_keys(PASSWORD)
 
-        # حذف Cookie overlay
-        try:
-            cookie = driver.find_element(By.ID, "mode-cookie-tip")
-            driver.execute_script(
-                "arguments[0].remove();",
-                cookie
-            )
-        except Exception:
-            pass
+            # ============================
+            # Email
+            # ============================
 
-        sign_in = wait.until(
-            EC.presence_of_element_located(
-                (
-                    By.XPATH,
-                    "//button[contains(translate(., "
-                    "'ABCDEFGHIJKLMNOPQRSTUVWXYZ', "
-                    "'abcdefghijklmnopqrstuvwxyz'), 'sign in')]"
+            email = wait.until(
+                EC.visibility_of_element_located(
+                    (
+                        By.CSS_SELECTOR,
+                        "input.widget-login-account-input"
+                    )
                 )
             )
-        )
 
-        driver.execute_script(
-            "arguments[0].scrollIntoView({block: 'center'});",
-            sign_in
-        )
+            email.clear()
+            email.send_keys(EMAIL)
 
-        driver.execute_script(
-            "arguments[0].click();",
-            sign_in
-        )
+            print("Email entered", flush=True)
 
-        print("Page request sent", flush=True)
+            # ============================
+            # Password
+            # ============================
 
-        # فرصت برای پردازش Login و Redirect
-        time.sleep(10)
+            password = wait.until(
+                EC.visibility_of_element_located(
+                    (
+                        By.CSS_SELECTOR,
+                        "input.widget-login-pwd-input"
+                    )
+                )
+            )
+
+            password.clear()
+            password.send_keys(PASSWORD)
+
+            print("Password entered", flush=True)
+
+            # ============================
+            # Stay signed in
+            # ============================
+
+            try:
+
+                keep_signed = driver.find_element(
+                    By.CSS_SELECTOR,
+                    ".widget-login-keep-checkbox"
+                )
+
+                aria_checked = keep_signed.get_attribute(
+                    "aria-checked"
+                )
+
+                check_value = keep_signed.get_attribute(
+                    "check"
+                )
+
+                print(
+                    "Stay signed in:",
+                    aria_checked,
+                    check_value,
+                    flush=True
+                )
+
+                if (
+                    aria_checked != "true"
+                    and check_value != "1"
+                ):
+
+                    driver.execute_script(
+                        "arguments[0].click();",
+                        keep_signed
+                    )
+
+            except Exception as e:
+
+                print(
+                    "Stay signed in check failed:",
+                    str(e),
+                    flush=True
+                )
+
+            # ============================
+            # Sign In
+            # ============================
+
+            sign_in = wait.until(
+                EC.element_to_be_clickable(
+                    (
+                        By.CSS_SELECTOR,
+                        "button.widget-login-btn[cmd='internetLogin']"
+                    )
+                )
+            )
+
+            driver.execute_script(
+                "arguments[0].scrollIntoView({block:'center'});",
+                sign_in
+            )
+
+            time.sleep(0.5)
+
+            driver.execute_script(
+                "arguments[0].click();",
+                sign_in
+            )
+
+            print(
+                "Sign in clicked",
+                flush=True
+            )
+
+            # منتظر Login
+            time.sleep(10)
+
+        # ============================
+        # نتیجه
+        # ============================
+
+        current_url = driver.current_url
+        title = driver.title
 
         print(
             "Current URL:",
-            driver.current_url,
+            current_url,
             flush=True
         )
 
         print(
-            "Page title:",
-            driver.title,
+            "Title:",
+            title,
             flush=True
         )
 
-        # متن قابل مشاهده صفحه
-        page_text = driver.find_element(
-            By.TAG_NAME,
-            "body"
-        ).text
+        try:
+
+            page_text = driver.find_element(
+                By.TAG_NAME,
+                "body"
+            ).text
+
+        except Exception:
+
+            page_text = ""
 
         print(
             "PAGE TEXT:",
@@ -125,19 +227,59 @@ def run_login():
             flush=True
         )
 
-        login_confirmed = "/user-center/signin" not in driver.current_url
+        # ============================
+        # بررسی Login
+        # ============================
+
+        if "/user-center/signin" in current_url:
+
+            error_text = ""
+
+            try:
+
+                message = driver.find_element(
+                    By.CSS_SELECTOR,
+                    ".widget-login-message"
+                )
+
+                error_text = message.text
+
+            except Exception:
+                pass
+
+            return jsonify({
+                "success": False,
+                "logged_in": False,
+                "current_url": current_url,
+                "title": title,
+                "error": error_text,
+                "page_text": page_text[:3000]
+            }), 401
+
+        # ============================
+        # Login موفق
+        # ============================
 
         return jsonify({
-            "success": login_confirmed,
-            "current_url": driver.current_url,
-            "title": driver.title,
+            "success": True,
+            "logged_in": True,
+            "current_url": current_url,
+            "title": title,
             "page_text": page_text[:3000]
         })
 
+    except TimeoutException as e:
+
+        traceback.print_exc()
+
+        return jsonify({
+            "success": False,
+            "error": "Timeout",
+            "details": str(e)
+        }), 500
+
     except Exception as e:
 
-        print("=== ERROR ===", flush=True)
-        print(str(e), flush=True)
         traceback.print_exc()
 
         return jsonify({
@@ -150,7 +292,11 @@ def run_login():
         if driver:
             driver.quit()
 
-        print("=== /run finished ===", flush=True)
+        print(
+            "=== /run finished ===",
+            flush=True
+        )
+
 
 if __name__ == "__main__":
 

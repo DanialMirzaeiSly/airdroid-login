@@ -4,6 +4,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import time
 import traceback
 
 
@@ -148,7 +149,7 @@ def run_login():
             driver.quit()
 
         print("=== /run finished ===", flush=True)
-        
+
 if __name__ == "__main__":
 
     app.run(

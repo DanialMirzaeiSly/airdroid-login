@@ -1,6 +1,6 @@
 from flask import Flask, jsonify
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
+# from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -125,8 +125,10 @@ def run_login():
             flush=True
         )
 
+        login_confirmed = "/user-center/signin" not in driver.current_url
+
         return jsonify({
-            "success": True,
+            "success": login_confirmed,
             "current_url": driver.current_url,
             "title": driver.title,
             "page_text": page_text[:3000]

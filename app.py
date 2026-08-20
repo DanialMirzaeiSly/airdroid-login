@@ -29,67 +29,76 @@ def run_login():
         print("=== /run started ===", flush=True)
 
         options = webdriver.ChromeOptions()
-
-        # مسیر Chromium داخل Docker
         options.binary_location = "/usr/bin/chromium"
-
-        # مسیر ChromeDriver داخل Docker
-        service = Service(
-            executable_path="/usr/bin/chromedriver"
-        )
-
-        options.page_load_strategy = "eager"
 
         options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
-        options.add_argument("--disable-software-rasterizer")
-        options.add_argument("--disable-extensions")
-        options.add_argument("--disable-background-networking")
-        options.add_argument("--disable-background-timer-throttling")
-        options.add_argument("--disable-renderer-backgrounding")
-        options.add_argument("--disable-popup-blocking")
-        options.add_argument("--no-first-run")
-        options.add_argument("--no-default-browser-check")
         options.add_argument("--window-size=1280,900")
 
-        print(
-            "Starting Chrome...",
-            flush=True
-        )
+        print("Starting Chrome...", flush=True)
 
-        driver = webdriver.Chrome(
-            service=service,
-            options=options
-        )
+        driver = webdriver.Chrome(options=options)
 
-        print(
-            "Chrome started successfully",
-            flush=True
-        )
+        print("Chrome started successfully", flush=True)
 
-        driver.set_page_load_timeout(30)
-        driver.set_script_timeout(30)
+        wait = WebDriverWait(driver, 20)
 
-        wait = WebDriverWait(
-            driver,
-            30
-        )
-
-        print(
-            "Opening AirDroid...",
-            flush=True
-        )
-
-        driver.set_page_load_timeout(30)
-        # URL
+        print("Opening AirDroid...", flush=True)
         driver.get(URL)
 
-        print(
-            "Page request sent",
-            flush=True
+        print("Page title:", driver.title, flush=True)
+
+        email = wait.until(
+            EC.visibility_of_element_located(
+                (By.CSS_SELECTOR, 'input[type="email"]')
+            )
         )
+        email.send_keys(EMAIL)
+
+        password = wait.until(
+            EC.visibility_of_element_located(
+                (By.CSS_SELECTOR, 'input[type="password"]')
+            )
+        )
+        password.send_keys(PASSWORD)
+
+        # حذف Cookie overlay
+        try:
+            cookie = driver.find_element(By.ID, "mode-cookie-tip")
+            driver.execute_script(
+                "arguments[0].remove();",
+                cookie
+            )
+        except Exception:
+            pass
+
+        sign_in = wait.until(
+            EC.presence_of_element_located(
+                (
+                    By.XPATH,
+                    "//button[contains(translate(., "
+                    "'ABCDEFGHIJKLMNOPQRSTUVWXYZ', "
+                    "'abcdefghijklmnopqrstuvwxyz'), 'sign in')]"
+                )
+            )
+        )
+
+        driver.execute_script(
+            "arguments[0].scrollIntoView({block: 'center'});",
+            sign_in
+        )
+
+        driver.execute_script(
+            "arguments[0].click();",
+            sign_in
+        )
+
+        print("Page request sent", flush=True)
+
+        # فرصت برای پردازش Login و Redirect
+        time.sleep(10)
 
         print(
             "Current URL:",
@@ -98,223 +107,48 @@ def run_login():
         )
 
         print(
-            "Title:",
+            "Page title:",
             driver.title,
             flush=True
         )
 
-        print(
-            "Waiting for email...",
-            flush=True
-        )
-
-        email = wait.until(
-            EC.visibility_of_element_located(
-                (
-                    By.CSS_SELECTOR,
-                    'input[type="email"]'
-                )
-            )
-        )
+        # متن قابل مشاهده صفحه
+        page_text = driver.find_element(
+            By.TAG_NAME,
+            "body"
+        ).text
 
         print(
-            "Email found",
-            flush=True
-        )
-
-        email.clear()
-        email.send_keys(EMAIL)
-
-        print(
-            "Email entered",
-            flush=True
-        )
-
-        print(
-            "Waiting for password...",
-            flush=True
-        )
-
-        password = wait.until(
-            EC.visibility_of_element_located(
-                (
-                    By.CSS_SELECTOR,
-                    'input[type="password"]'
-                )
-            )
-        )
-
-        print(
-            "Password found",
-            flush=True
-        )
-
-        password.clear()
-        password.send_keys(PASSWORD)
-
-        print(
-            "Password entered",
-            flush=True
-        )
-
-        # Cookie
-        try:
-
-            cookie = WebDriverWait(
-                driver,
-                3
-            ).until(
-                EC.presence_of_element_located(
-                    (
-                        By.ID,
-                        "mode-cookie-tip"
-                    )
-                )
-            )
-
-            driver.execute_script(
-                "arguments[0].remove();",
-                cookie
-            )
-
-            print(
-                "Cookie popup removed",
-                flush=True
-            )
-
-        except Exception:
-
-            print(
-                "Cookie popup not found",
-                flush=True
-            )
-
-        # Sign in
-        print(
-            "Waiting for Sign in...",
-            flush=True
-        )
-
-        sign_in = wait.until(
-            EC.element_to_be_clickable(
-                (
-                    By.XPATH,
-                    """
-                    //button[
-                        contains(
-                            translate(
-                                normalize-space(.),
-                                'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
-                                'abcdefghijklmnopqrstuvwxyz'
-                            ),
-                            'sign in'
-                        )
-                    ]
-                    """
-                )
-            )
-        )
-
-        print(
-            "Sign in button found",
-            flush=True
-        )
-
-        driver.execute_script(
-            """
-            arguments[0].scrollIntoView({
-                block: 'center',
-                inline: 'center'
-            });
-            """,
-            sign_in
-        )
-
-        try:
-
-            sign_in.click()
-
-            print(
-                "Sign in clicked",
-                flush=True
-            )
-
-        except Exception as e:
-
-            print(
-                "Normal click failed:",
-                repr(e),
-                flush=True
-            )
-
-            driver.execute_script(
-                "arguments[0].click();",
-                sign_in
-            )
-
-            print(
-                "JavaScript click completed",
-                flush=True
-            )
-
-        print(
-            "Login request submitted",
+            "PAGE TEXT:",
+            page_text[:3000],
             flush=True
         )
 
         return jsonify({
             "success": True,
-            "message": "Login request submitted",
             "current_url": driver.current_url,
-            "title": driver.title
+            "title": driver.title,
+            "page_text": page_text[:3000]
         })
 
     except Exception as e:
 
-        print(
-            "=== ERROR ===",
-            flush=True
-        )
-
-        print(
-            repr(e),
-            flush=True
-        )
-
+        print("=== ERROR ===", flush=True)
+        print(str(e), flush=True)
         traceback.print_exc()
 
         return jsonify({
             "success": False,
-            "error": repr(e)
+            "error": str(e)
         }), 500
 
     finally:
 
-        if driver is not None:
+        if driver:
+            driver.quit()
 
-            try:
-
-                driver.quit()
-
-                print(
-                    "Chrome closed",
-                    flush=True
-                )
-
-            except Exception as e:
-
-                print(
-                    "Chrome quit warning:",
-                    repr(e),
-                    flush=True
-                )
-
-        print(
-            "=== /run finished ===",
-            flush=True
-        )
-
-
+        print("=== /run finished ===", flush=True)
+        
 if __name__ == "__main__":
 
     app.run(
